@@ -242,24 +242,33 @@ export const appRouter = router({
       .input(z.object({ accessToken: z.string() }))
       .mutation(async ({ input, ctx }) => {
         const { accessToken } = input;
-        console.log("[Auth] Syncing Google session with Supabase SDK...");
+        console.log("[Auth] Verifying Supabase token via raw fetch...");
         try {
-          const { createClient } = await import("@supabase/supabase-js");
-          const SUPABASE_URL = "https://xdeedurvamsonavclpel.supabase.co";
-          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU";
-          
-          const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          const { data: { user: supabaseUser }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
+          // Use raw fetch — no SDK, no atob(), no base64url issues
+          const res = await fetch("https://xdeedurvamsonavclpel.supabase.co/auth/v1/user", {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU",
+            },
+          });
 
-          if (authError || !supabaseUser || !supabaseUser.email) {
-            console.error("[Auth] Supabase auth error:", authError);
-            throw new TRPCError({ 
-              code: "UNAUTHORIZED", 
-              message: `Supabase verification failed: ${authError?.message || "User not found"}` 
-            });
+          if (!res.ok) {
+            const body = await res.text().catch(() => "unknown");
+            console.error("[Auth] Supabase rejected token:", res.status, body);
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid Supabase token" });
           }
 
-          console.log("[Auth] Supabase user verified via SDK:", supabaseUser.email);
+          const supabaseUser = await res.json() as {
+            id: string;
+            email: string;
+            user_metadata?: { full_name?: string };
+          };
+
+          if (!supabaseUser?.email) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "No email in Supabase response" });
+          }
+
+          console.log("[Auth] Token verified for:", supabaseUser.email);
 
           // Find or create user in our DB
           let user = await getUserByUsername(supabaseUser.email);
@@ -278,14 +287,13 @@ export const appRouter = router({
           const cookieOptions = getSessionCookieOptions(ctx.req);
           ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
 
-          return { success: true, user };
+          // Return minimal data to avoid any serialization issues
+          return { success: true as const };
         } catch (err: any) {
-          console.error("Google login failed:", err);
-          const detail = err.message || "Unknown error";
-          throw new TRPCError({ 
-            code: "UNAUTHORIZED", 
-            message: `Supabase sync failed: ${detail}` 
-          });
+          const msg = err instanceof TRPCError ? err.message : (err?.message ?? "Unknown error");
+          console.error("[Auth] Login error:", msg);
+          if (err instanceof TRPCError) throw err;
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
         }
       }),
     setupAdmin: publicProcedure

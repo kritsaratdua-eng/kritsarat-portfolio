@@ -34,7 +34,10 @@ export default function Login() {
         try {
           await loginWithSupabase.mutateAsync({ accessToken: session.access_token });
           toast.success("Google login successful!");
-          // Navigation will be handled by the "isAuthenticated" useEffect below
+          // Clear Supabase session so it doesn't trigger again
+          await supabase.auth.signOut();
+          // Force reload to pick up new session cookie and redirect
+          window.location.href = "/admin";
         } catch (err: any) {
           console.error("Google login failed:", err);
           setError("Failed to sync Google account with local session");

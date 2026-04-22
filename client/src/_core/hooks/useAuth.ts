@@ -23,18 +23,6 @@ export function useAuth(options?: UseAuthOptions) {
     },
   });
 
-  const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: (data) => {
-      utils.auth.me.setData(undefined, data.user as any);
-    },
-  });
-
-  const registerMutation = trpc.auth.register.useMutation({
-    onSuccess: (data) => {
-      utils.auth.me.setData(undefined, data.user as any);
-    },
-  });
-
   const logout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
@@ -74,7 +62,7 @@ export function useAuth(options?: UseAuthOptions) {
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
 
-    window.location.href = redirectPath
+    window.location.href = redirectPath;
   }, [
     redirectOnUnauthenticated,
     redirectPath,
@@ -87,9 +75,5 @@ export function useAuth(options?: UseAuthOptions) {
     ...state,
     refresh: () => meQuery.refetch(),
     logout,
-    login: loginMutation.mutateAsync,
-    register: registerMutation.mutateAsync,
-    isLoggingIn: loginMutation.isPending,
-    isRegistering: registerMutation.isPending,
   };
 }

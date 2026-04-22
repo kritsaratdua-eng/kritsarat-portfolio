@@ -11,13 +11,10 @@ import {
   getTeachingPlans, createTeachingPlan, updateTeachingPlan, deleteTeachingPlan,
   getLiveDemos, createLiveDemo, updateLiveDemo, deleteLiveDemo,
   getContactInfo, upsertContactInfo,
-  getUserByUsername, createUser, updateUser, getDb
+  getUserByUsername, createUser,
 } from "./db";
 import { storagePut } from "./storage";
-import bcrypt from "bcryptjs";
 import { sdk } from "./_core/sdk";
-import { users } from "../drizzle/schema";
-import { sql } from "drizzle-orm";
 
 // Admin guard middleware
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {

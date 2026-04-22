@@ -40,7 +40,8 @@ export default function Login() {
           window.location.href = "/admin";
         } catch (err: any) {
           console.error("Google login failed:", err);
-          setError("Failed to sync Google account with local session");
+          const detail = err.message || "Unknown error";
+          setError(`Failed to sync Google account: ${detail}`);
           setIsSubmitting(false);
         }
       }

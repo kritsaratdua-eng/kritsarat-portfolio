@@ -248,11 +248,10 @@ export const appRouter = router({
         console.log("[Auth] Syncing Google session with Supabase SDK...");
         try {
           const { createClient } = await import("@supabase/supabase-js");
-          const supabaseAdmin = createClient(
-            "https://xdeedurvamsonavclpel.supabase.co",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU"
-          );
-
+          const SUPABASE_URL = "https://xdeedurvamsonavclpel.supabase.co";
+          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU";
+          
+          const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
           const { data: { user: supabaseUser }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
 
           if (authError || !supabaseUser || !supabaseUser.email) {
@@ -284,10 +283,11 @@ export const appRouter = router({
 
           return { success: true, user };
         } catch (err: any) {
-          console.error("[Auth] Supabase sync failed:", err.message);
+          console.error("Google login failed:", err);
+          const detail = err.message || "Unknown error";
           throw new TRPCError({ 
             code: "UNAUTHORIZED", 
-            message: `Supabase sync failed: ${err.message}` 
+            message: `Supabase sync failed: ${detail}` 
           });
         }
       }),

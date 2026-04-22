@@ -90,11 +90,14 @@ class SDKServer {
     options: { expiresInMs?: number } = {}
   ): Promise<string> {
     const expires = Date.now() + (options.expiresInMs ?? ONE_YEAR_MS);
-    const data = JSON.stringify({ ...payload, expires });
+    const dataJson = JSON.stringify({ ...payload, expires });
+    // Convert JSON to hex to avoid cookie character issues on Safari
+    const dataHex = Buffer.from(dataJson).toString('hex');
+    
     const hmac = (await import("crypto")).createHmac("sha256", ENV.cookieSecret);
-    hmac.update(data);
+    hmac.update(dataHex);
     const signature = hmac.digest("hex");
-    return `${data}.${signature}`;
+    return `${dataHex}.${signature}`;
   }
 
   async verifySession(
@@ -103,16 +106,18 @@ class SDKServer {
     if (!cookieValue) return null;
 
     try {
-      const [data, signature] = cookieValue.split(".");
-      if (!data || !signature) return null;
+      const [dataHex, signature] = cookieValue.split(".");
+      if (!dataHex || !signature) return null;
 
       const hmac = (await import("crypto")).createHmac("sha256", ENV.cookieSecret);
-      hmac.update(data);
+      hmac.update(dataHex);
       const expectedSignature = hmac.digest("hex");
 
       if (signature !== expectedSignature) return null;
 
-      const payload = JSON.parse(data);
+      // Convert hex back to JSON
+      const dataJson = Buffer.from(dataHex, 'hex').toString('utf8');
+      const payload = JSON.parse(dataJson);
       if (payload.expires < Date.now()) return null;
 
       return payload;

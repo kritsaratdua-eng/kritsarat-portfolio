@@ -245,20 +245,25 @@ export const appRouter = router({
       .input(z.object({ accessToken: z.string() }))
       .mutation(async ({ input, ctx }) => {
         const { accessToken } = input;
-        console.log("[Auth] Syncing Google session with Supabase...");
+        console.log("[Auth] Syncing Google session with Supabase SDK...");
         try {
-          const response = await axios.get(`https://xdeedurvamsonavclpel.supabase.co/auth/v1/user`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU",
-            },
-          });
+          const { createClient } = await import("@supabase/supabase-js");
+          const supabaseAdmin = createClient(
+            "https://xdeedurvamsonavclpel.supabase.co",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU"
+          );
 
-          const supabaseUser = response.data;
-          console.log("[Auth] Supabase user verified:", supabaseUser.email);
-          if (!supabaseUser || !supabaseUser.email) {
-            throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid Supabase token" });
+          const { data: { user: supabaseUser }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
+
+          if (authError || !supabaseUser || !supabaseUser.email) {
+            console.error("[Auth] Supabase auth error:", authError);
+            throw new TRPCError({ 
+              code: "UNAUTHORIZED", 
+              message: `Supabase verification failed: ${authError?.message || "User not found"}` 
+            });
           }
+
+          console.log("[Auth] Supabase user verified via SDK:", supabaseUser.email);
 
           // Find or create user in our DB
           let user = await getUserByUsername(supabaseUser.email);
@@ -279,10 +284,10 @@ export const appRouter = router({
 
           return { success: true, user };
         } catch (err: any) {
-          console.error("[Auth] Supabase sync failed:", err.response?.data || err.message);
+          console.error("[Auth] Supabase sync failed:", err.message);
           throw new TRPCError({ 
             code: "UNAUTHORIZED", 
-            message: `Supabase sync failed: ${err.response?.data?.msg || err.message}` 
+            message: `Supabase sync failed: ${err.message}` 
           });
         }
       }),

@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO contact_info (email, phone, linkedinUrl, githubUrl, location) VALUES ('kritsarat@example.com', '+66 XX-XXX-XXXX', 'https://linkedin.com/in/kritsarat', 'https://github.com/kritsarat', 'Thailand')",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3BUo93u2XPKiYv8.root --database Gfq4bxy3CaNLPyd9R7Cgdm --execute INSERT INTO contact_info (email, phone, linkedinUrl, githubUrl, location) VALUES ('kritsarat@example.com', '+66 XX-XXX-XXXX', 'https://linkedin.com/in/kritsarat', 'https://github.com/kritsarat', 'Thailand')",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1615
+}

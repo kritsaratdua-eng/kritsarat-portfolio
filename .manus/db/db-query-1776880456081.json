@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `gallery_images` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`title` varchar(255),\n\t`description` text,\n\t`imageUrl` varchar(512) NOT NULL,\n\t`imageKey` varchar(512),\n\t`category` varchar(100),\n\t`sortOrder` int DEFAULT 0,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `gallery_images_id` PRIMARY KEY(`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3BUo93u2XPKiYv8.root --database Gfq4bxy3CaNLPyd9R7Cgdm --execute CREATE TABLE `gallery_images` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`title` varchar(255),\n\t`description` text,\n\t`imageUrl` varchar(512) NOT NULL,\n\t`imageKey` varchar(512),\n\t`category` varchar(100),\n\t`sortOrder` int DEFAULT 0,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `gallery_images_id` PRIMARY KEY(`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1687
+}

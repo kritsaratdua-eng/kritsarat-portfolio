@@ -16,7 +16,10 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check if admin setup is needed
-  const { data: systemInfo } = trpc.system.getInfo.useQuery();
+  const { data: systemInfo } = trpc.system.getInfo.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const [isSetupMode, setIsSetupMode] = useState(false);
   const setupAdmin = trpc.auth.setupAdmin.useMutation();
 

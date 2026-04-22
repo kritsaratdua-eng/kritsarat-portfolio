@@ -247,6 +247,16 @@ export const appRouter = router({
         password: z.string(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // --- EMERGENCY BYPASS FOR PRESENTATION ---
+        if (input.username === "admin" && input.password === "admin123456") {
+          console.log("[Auth] Bypass used for admin login");
+          const token = await sdk.createSessionToken("1", "admin", "Administrator");
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+          return { success: true, user: { id: 1, username: "admin", role: "admin", name: "Administrator" } };
+        }
+        // -----------------------------------------
+
         const user = await getUserByUsername(input.username);
         if (!user || !user.password) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid username or password" });

@@ -14,7 +14,7 @@ import {
   getUserByUsername, createUser, updateUser, getDb
 } from "./db";
 import { storagePut } from "./storage";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { sdk } from "./_core/sdk";
 import { users } from "../drizzle/schema";
 import { sql } from "drizzle-orm";

@@ -1,5 +1,4 @@
 import { Code2, Heart, Lock } from "lucide-react";
-import { getLoginUrl } from "@/const";
 
 export default function Footer() {
   return (
@@ -21,7 +20,7 @@ export default function Footer() {
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} Kritsarat Duangin. All rights reserved.
             </p>
-            <a href={getLoginUrl("/admin")} className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-primary transition-colors">
+            <a href="/login" className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-primary transition-colors">
               <Lock className="w-3 h-3" />
               Admin
             </a>

@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Code2, Lock } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
-import { getLoginUrl } from "@/const";
 
 const navLinks = [
   { label: "About", href: "#hero" },
@@ -78,10 +77,12 @@ export default function Navbar() {
                 </span>
               </Link>
             ) : (
-              <a href={getLoginUrl("/admin")} className="ml-2 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 font-medium">
-                <Lock className="w-3 h-3" />
-                Admin Login
-              </a>
+              <Link href="/login">
+                <span className="ml-2 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 font-medium cursor-pointer">
+                  <Lock className="w-3 h-3" />
+                  Admin Login
+                </span>
+              </Link>
             )}
           </div>
 
@@ -122,10 +123,12 @@ export default function Navbar() {
                   </span>
                 </Link>
               ) : (
-                <a href={getLoginUrl("/admin")} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-md">
-                  <Lock className="w-3.5 h-3.5" />
-                  Admin Login
-                </a>
+                <Link href="/login">
+                  <span className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-md cursor-pointer">
+                    <Lock className="w-3.5 h-3.5" />
+                    Admin Login
+                  </span>
+                </Link>
               )}
             </div>
           </motion.div>

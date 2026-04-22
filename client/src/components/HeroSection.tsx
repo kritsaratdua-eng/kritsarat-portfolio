@@ -145,7 +145,7 @@ export default function HeroSection() {
               <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl p-1 bg-gradient-to-br from-primary/50 via-white/10 to-accent/50 glass">
                 <div className="w-full h-full rounded-[1.4rem] overflow-hidden">
                   <img
-                    src="/manus-storage/profile_43ce6d65.jpg"
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400"
                     alt="Kritsarat Duangin"
                     className="w-full h-full object-cover object-center grayscale hover:grayscale-0 transition-all duration-700 hover:scale-110"
                   />

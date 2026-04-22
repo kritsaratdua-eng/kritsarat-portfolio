@@ -20,6 +20,13 @@ export default function Login() {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const setupAdmin = trpc.auth.setupAdmin.useMutation();
 
+  // Automatically switch to setup mode if needed
+  useEffect(() => {
+    if (systemInfo?.setupNeeded) {
+      setIsSetupMode(true);
+    }
+  }, [systemInfo]);
+
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && isAuthenticated) {

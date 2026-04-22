@@ -3,7 +3,6 @@ import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
-import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
@@ -97,51 +96,34 @@ class SDKServer {
     payload: SessionPayload,
     options: { expiresInMs?: number } = {}
   ): Promise<string> {
-    const issuedAt = Date.now();
-    const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
-    const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
-    const secretKey = this.getSessionSecret();
-
-    return new SignJWT({
-      userId: payload.userId,
-      username: payload.username,
-      name: payload.name,
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setExpirationTime(expirationSeconds)
-      .sign(secretKey);
+    const expires = Date.now() + (options.expiresInMs ?? ONE_YEAR_MS);
+    const data = JSON.stringify({ ...payload, expires });
+    const hmac = (await import("crypto")).createHmac("sha256", ENV.cookieSecret);
+    hmac.update(data);
+    const signature = hmac.digest("hex");
+    return `${data}.${signature}`;
   }
 
   async verifySession(
     cookieValue: string | undefined | null
   ): Promise<SessionPayload | null> {
-    if (!cookieValue) {
-      console.warn("[Auth] Missing session cookie");
-      return null;
-    }
+    if (!cookieValue) return null;
 
     try {
-      const secretKey = this.getSessionSecret();
-      const { payload } = await jwtVerify(cookieValue, secretKey, {
-        algorithms: ["HS256"],
-      });
-      const { userId, username, name } = payload as Record<string, unknown>;
+      const [data, signature] = cookieValue.split(".");
+      if (!data || !signature) return null;
 
-      if (
-        !isNonEmptyString(userId) ||
-        !isNonEmptyString(username)
-      ) {
-        console.warn("[Auth] Session payload missing required fields");
-        return null;
-      }
+      const hmac = (await import("crypto")).createHmac("sha256", ENV.cookieSecret);
+      hmac.update(data);
+      const expectedSignature = hmac.digest("hex");
 
-      return {
-        userId,
-        username,
-        name: (name as string) || "",
-      };
+      if (signature !== expectedSignature) return null;
+
+      const payload = JSON.parse(data);
+      if (payload.expires < Date.now()) return null;
+
+      return payload;
     } catch (error) {
-      console.warn("[Auth] Session verification failed", String(error));
       return null;
     }
   }

@@ -49,13 +49,7 @@ export default function HeroSection() {
               <span className="text-foreground">Kritsarat</span>
               <br />
               <span
-                className="glow-text"
-                style={{
-                  background: "linear-gradient(135deg, oklch(0.78 0.14 195), oklch(0.70 0.22 300))",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
+                className="glow-text text-primary"
               >
                 Duangin
               </span>

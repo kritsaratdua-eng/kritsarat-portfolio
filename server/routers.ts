@@ -245,37 +245,46 @@ export const appRouter = router({
       .input(z.object({ accessToken: z.string() }))
       .mutation(async ({ input, ctx }) => {
         const { accessToken } = input;
-        // Call Supabase API to get user info from token
-        const response = await axios.get(`https://xdeedurvamsonavclpel.supabase.co/auth/v1/user`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            apikey: "sb_publishable_NIZjuyYM2nnNVkd-lYllYw_V76-JEEp",
-          },
-        });
+        console.log("[Auth] Syncing Google session with Supabase...");
+        try {
+          const response = await axios.get(`https://xdeedurvamsonavclpel.supabase.co/auth/v1/user`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZWVkdXJ2YW1zb25hdmNscGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzIwMzcsImV4cCI6MjA5MjQ0ODAzN30.cifeUsML4hvGsD-xB-YNYXr49R7qPAACDy7_YSMcPwU",
+            },
+          });
 
-        const supabaseUser = response.data;
-        if (!supabaseUser || !supabaseUser.email) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid Supabase token" });
-        }
+          const supabaseUser = response.data;
+          console.log("[Auth] Supabase user verified:", supabaseUser.email);
+          if (!supabaseUser || !supabaseUser.email) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid Supabase token" });
+          }
 
-        // Find or create user in our DB
-        let user = await getUserByUsername(supabaseUser.email);
-        if (!user) {
-          user = await createUser({
-            username: supabaseUser.email,
-            email: supabaseUser.email,
-            name: supabaseUser.user_metadata?.full_name || supabaseUser.email,
-            role: "admin", // Auto-grant admin for now or check against ownerOpenId
-            openId: supabaseUser.id,
-            password: "", // No password for OAuth users
+          // Find or create user in our DB
+          let user = await getUserByUsername(supabaseUser.email);
+          if (!user) {
+            user = await createUser({
+              username: supabaseUser.email,
+              email: supabaseUser.email,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email,
+              role: "admin",
+              openId: supabaseUser.id,
+              password: "",
+            });
+          }
+
+          const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+
+          return { success: true, user };
+        } catch (err: any) {
+          console.error("[Auth] Supabase sync failed:", err.response?.data || err.message);
+          throw new TRPCError({ 
+            code: "UNAUTHORIZED", 
+            message: `Supabase sync failed: ${err.response?.data?.msg || err.message}` 
           });
         }
-
-        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
-
-        return { success: true, user };
       }),
     login: publicProcedure
       .input(z.object({

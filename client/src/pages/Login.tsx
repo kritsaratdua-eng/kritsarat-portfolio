@@ -28,15 +28,19 @@ export default function Login() {
   // Handle Supabase OAuth redirection and token exchange
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token && !isAuthenticated && !isSubmitting) {
+      // Manual parsing of hash fragments to avoid Safari library errors
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.replace("#", "?"));
+      const accessToken = params.get("access_token");
+
+      if (accessToken && !isAuthenticated && !isSubmitting) {
         setIsSubmitting(true);
         try {
-          await loginWithSupabase.mutateAsync({ accessToken: session.access_token });
+          await loginWithSupabase.mutateAsync({ accessToken });
           toast.success("Google login successful!");
-          // Clear Supabase session so it doesn't trigger again
+          // Clear hash and sign out of supabase
+          window.location.hash = "";
           await supabase.auth.signOut();
-          // Force reload to pick up new session cookie and redirect
           window.location.href = "/admin";
         } catch (err: any) {
           console.error("Google login failed:", err);

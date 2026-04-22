@@ -8,10 +8,7 @@
     },
     {
       "src": "server/_core/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "installCommand": "pnpm install --no-frozen-lockfile"
-      }
+      "use": "@vercel/node"
     }
   ],
   "rewrites": [

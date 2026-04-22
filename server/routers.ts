@@ -291,65 +291,6 @@ export const appRouter = router({
           });
         }
       }),
-    login: publicProcedure
-      .input(z.object({
-        username: z.string(),
-        password: z.string(),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        // --- EMERGENCY BYPASS FOR PRESENTATION ---
-        if (input.username === "admin" && input.password === "admin123456") {
-          console.log("[Auth] Bypass used for admin login");
-          const token = await sdk.createSessionToken("1", "admin", "Administrator");
-          const cookieOptions = getSessionCookieOptions(ctx.req);
-          ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
-          return { success: true, user: { id: 1, username: "admin", role: "admin", name: "Administrator" } };
-        }
-        // -----------------------------------------
-
-        const user = await getUserByUsername(input.username);
-        if (!user || !user.password) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid username or password" });
-        }
-
-        const isValid = await bcrypt.compare(input.password, user.password);
-        if (!isValid) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid username or password" });
-        }
-
-        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
-
-        return { success: true, user };
-      }),
-    register: publicProcedure
-      .input(z.object({
-        username: z.string().min(3),
-        password: z.string().min(6),
-        name: z.string().optional(),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const existing = await getUserByUsername(input.username);
-        if (existing) {
-          throw new TRPCError({ code: "CONFLICT", message: "Username already exists" });
-        }
-
-        const hashedPassword = await bcrypt.hash(input.password, 10);
-        const user = await createUser({
-          username: input.username,
-          password: hashedPassword,
-          name: input.name || null,
-          role: "user",
-          openId: input.username, // temporary fallback
-        });
-
-        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
-
-        return { success: true, user };
-      }),
     setupAdmin: publicProcedure
       .input(z.object({
         username: z.string().min(3),
@@ -357,28 +298,7 @@ export const appRouter = router({
         name: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB not available" });
-        
-        const countRes = await db.select({ count: sql<number>`count(*)` }).from(users);
-        if (Number(countRes[0].count) > 0) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Admin already setup" });
-        }
-
-        const hashedPassword = await bcrypt.hash(input.password, 10);
-        const user = await createUser({
-          username: input.username,
-          password: hashedPassword,
-          name: input.name || "Admin",
-          role: "admin",
-          openId: input.username,
-        });
-
-        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
-
-        return { success: true, user };
+        throw new TRPCError({ code: "FORBIDDEN", message: "Password setup is disabled. Use Google Login." });
       }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);

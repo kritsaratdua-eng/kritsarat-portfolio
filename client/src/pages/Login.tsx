@@ -1,16 +1,26 @@
-import { motion } from "framer-motion";
-import { Code2, Lock, ShieldCheck, ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Code2, Lock, ShieldCheck, ArrowLeft, User, Key, AlertCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
-import { getLoginUrl } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function Login() {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, login } = useAuth();
   const [, navigate] = useLocation();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already logged in as admin
+  // Check if admin setup is needed
+  const { data: systemInfo } = trpc.system.getInfo.useQuery();
+  const [isSetupMode, setIsSetupMode] = useState(false);
+  const setupAdmin = trpc.auth.setupAdmin.useMutation();
+
+  // Redirect if already logged in
   useEffect(() => {
     if (!loading && isAuthenticated) {
       if (user?.role === "admin") {
@@ -20,6 +30,28 @@ export default function Login() {
       }
     }
   }, [isAuthenticated, user, loading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (isSetupMode) {
+        await setupAdmin.mutateAsync({ username, password });
+        toast.success("Admin setup successful!");
+      } else {
+        await login({ username, password });
+        toast.success("Logged in successfully");
+      }
+      navigate("/admin");
+    } catch (err: any) {
+      setError(err.message || "Authentication failed");
+      toast.error(err.message || "Failed to authenticate");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden px-4">
@@ -53,7 +85,7 @@ export default function Login() {
         className="relative z-10 w-full max-w-md"
       >
         {/* Card */}
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl shadow-black/40">
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl shadow-black/40 backdrop-blur-sm bg-card/80">
           {/* Logo + Title */}
           <div className="flex flex-col items-center gap-4 mb-8">
             <div className="relative">
@@ -65,56 +97,96 @@ export default function Login() {
               </div>
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">Admin Access</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                {isSetupMode ? "Setup Admin" : "Admin Console"}
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Kritsarat Duangin — Portfolio CMS
+                Kritsarat Duangin — Portfolio Management
               </p>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">Sign in to continue</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-xl flex items-center gap-2 mb-2"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          {/* Info box */}
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 flex gap-3">
-            <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-foreground font-medium">Owner-only access</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Only the portfolio owner can manage content. Sign in with your Manus account to proceed.
-              </p>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground ml-1">Username</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <User className="w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Login Button */}
-          <a
-            href={getLoginUrl("/admin")}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 active:scale-95 transition-all duration-150 shadow-lg shadow-primary/25"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-            </svg>
-            Sign in with Manus
-          </a>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground ml-1">Password</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Key className="w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-primary text-primary-foreground rounded-xl py-3.5 font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                isSetupMode ? "Create Admin Account" : "Access Console"
+              )}
+            </button>
+          </form>
+
+          {/* Toggle Setup Mode */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsSetupMode(!isSetupMode)}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {isSetupMode ? "Already have an account? Login" : "Need to setup initial admin?"}
+            </button>
+          </div>
 
           {/* Footer note */}
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Not the owner?{" "}
-            <Link href="/">
-              <span className="text-primary hover:underline cursor-pointer">
-                View portfolio instead
-              </span>
-            </Link>
+          <p className="text-center text-xs text-muted-foreground mt-6 pt-6 border-t border-border/50">
+            Securely stored on Supabase
           </p>
         </div>
 
         {/* Brand watermark */}
         <p className="text-center text-xs text-muted-foreground/40 mt-6">
-          KD Portfolio · Admin Panel v1.0
+          KD Portfolio · Admin Panel v2.0
         </p>
       </motion.div>
     </div>

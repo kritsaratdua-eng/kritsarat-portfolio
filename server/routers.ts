@@ -11,8 +11,13 @@ import {
   getTeachingPlans, createTeachingPlan, updateTeachingPlan, deleteTeachingPlan,
   getLiveDemos, createLiveDemo, updateLiveDemo, deleteLiveDemo,
   getContactInfo, upsertContactInfo,
+  getUserByUsername, createUser, updateUser, getDb
 } from "./db";
 import { storagePut } from "./storage";
+import bcrypt from "bcrypt";
+import { sdk } from "./_core/sdk";
+import { users } from "../drizzle/schema";
+import { sql } from "drizzle-orm";
 
 // Admin guard middleware
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -236,6 +241,85 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    login: publicProcedure
+      .input(z.object({
+        username: z.string(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserByUsername(input.username);
+        if (!user || !user.password) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid username or password" });
+        }
+
+        const isValid = await bcrypt.compare(input.password, user.password);
+        if (!isValid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid username or password" });
+        }
+
+        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+
+        return { success: true, user };
+      }),
+    register: publicProcedure
+      .input(z.object({
+        username: z.string().min(3),
+        password: z.string().min(6),
+        name: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await getUserByUsername(input.username);
+        if (existing) {
+          throw new TRPCError({ code: "CONFLICT", message: "Username already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(input.password, 10);
+        const user = await createUser({
+          username: input.username,
+          password: hashedPassword,
+          name: input.name || null,
+          role: "user",
+          openId: input.username, // temporary fallback
+        });
+
+        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+
+        return { success: true, user };
+      }),
+    setupAdmin: publicProcedure
+      .input(z.object({
+        username: z.string().min(3),
+        password: z.string().min(6),
+        name: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB not available" });
+        
+        const countRes = await db.select({ count: sql<number>`count(*)` }).from(users);
+        if (Number(countRes[0].count) > 0) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin already setup" });
+        }
+
+        const hashedPassword = await bcrypt.hash(input.password, 10);
+        const user = await createUser({
+          username: input.username,
+          password: hashedPassword,
+          name: input.name || "Admin",
+          role: "admin",
+          openId: input.username,
+        });
+
+        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+
+        return { success: true, user };
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

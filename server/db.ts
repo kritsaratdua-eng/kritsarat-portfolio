@@ -84,6 +84,26 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createUser(data: InsertUser) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [user] = await db.insert(users).values(data as any).returning();
+  return user;
+}
+
+export async function updateUser(id: number, data: Partial<InsertUser>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(users).set(data).where(eq(users.id, id));
+}
+
 // ── Projects ────────────────────────────────────────────────────────────────
 export async function getProjects() {
   const db = await getDb();

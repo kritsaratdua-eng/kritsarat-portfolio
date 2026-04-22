@@ -241,6 +241,42 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    loginWithSupabase: publicProcedure
+      .input(z.object({ accessToken: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const { accessToken } = input;
+        // Call Supabase API to get user info from token
+        const response = await axios.get(`https://xdeedurvamsonavclpel.supabase.co/auth/v1/user`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            apikey: "sb_publishable_NIZjuyYM2nnNVkd-lYllYw_V76-JEEp",
+          },
+        });
+
+        const supabaseUser = response.data;
+        if (!supabaseUser || !supabaseUser.email) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid Supabase token" });
+        }
+
+        // Find or create user in our DB
+        let user = await getUserByUsername(supabaseUser.email);
+        if (!user) {
+          user = await createUser({
+            username: supabaseUser.email,
+            email: supabaseUser.email,
+            name: supabaseUser.user_metadata?.full_name || supabaseUser.email,
+            role: "admin", // Auto-grant admin for now or check against ownerOpenId
+            openId: supabaseUser.id,
+            password: "", // No password for OAuth users
+          });
+        }
+
+        const token = await sdk.createSessionToken(user.id.toString(), user.username!, user.name || "");
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+
+        return { success: true, user };
+      }),
     login: publicProcedure
       .input(z.object({
         username: z.string(),
